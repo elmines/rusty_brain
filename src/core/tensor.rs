@@ -1,16 +1,25 @@
 use std::ops::Mul;
+use std::ptr;
+
+use std::cmp::{PartialEq, Eq};
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug)]
 pub struct Tensor {
 	pub shape: Vec<u64>,
+	id: u128,
 	//preds: Vec<&'a Tensor<'a>>
 }
 
 
 impl Tensor {
 	///Construct a Tensor from the given known shape
-	pub fn new(shape: Vec<u64>) -> Tensor {
-		Tensor {shape}
+	pub fn placeholder(shape: Vec<u64>) -> Tensor {
+		Tensor {shape, id: 0}
+	}
+
+	pub fn computation(shape: Vec<u64>, id: u128) -> Tensor {
+		Tensor {shape, id}
 	}
 
 	///Access the first dimension (it can make your code more readable, okay?)
@@ -32,10 +41,24 @@ impl Tensor {
 		for &dim in (&x.shape[1..]).iter() { shape.push(dim); }
 		if shape.len() < 1 { shape.push(1) }; //The inner product is a scalar
 
-		Tensor::new(shape)
+		Tensor::placeholder(shape)
 	}
 
 }
+
+impl<'a> PartialEq for &'a Tensor {
+	fn eq(&self, other: &&Tensor) -> bool {
+		ptr::eq(*self, *other)
+	}
+}
+impl<'a> Eq for &'a Tensor {}
+
+impl<'a> Hash for &'a Tensor {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.id.hash(state);
+	}
+}
+
 
 fn broadcast(l: &Tensor, r: &Tensor) -> Vec<u64> {
 	let mut shape = vec![];
@@ -72,7 +95,7 @@ impl<'a> Mul<&'a Tensor> for &'a Tensor {
 
 		let shape = broadcast(self, rhs);
 
-		Tensor::new(shape)
+		Tensor::placeholder(shape)
 	}
 }
 
@@ -81,44 +104,81 @@ impl<'a> Mul<&'a Tensor> for &'a Tensor {
 mod tests {
 	use super::*;
 
+	use std::collections::hash_map::DefaultHasher;
+
+	#[test]
+	fn tensor_hash() {
+		let a = Tensor::computation(vec![5, 5, 5], 0);
+		let b = Tensor::computation(vec![3], 0);
+		let c = Tensor::computation(vec![5, 5, 5], 1);
+
+		let mut hasher_a = DefaultHasher::new();
+		let mut hasher_b = DefaultHasher::new();
+		let mut hasher_c = DefaultHasher::new();
+
+		(&a).hash(&mut hasher_a);
+		(&b).hash(&mut hasher_b);
+		(&c).hash(&mut hasher_c);
+
+		let a_hash = hasher_a.finish();
+		let b_hash = hasher_b.finish();
+		let c_hash = hasher_c.finish();
+
+		assert_eq!(a_hash, b_hash);
+		assert_ne!(a_hash, c_hash);
+		assert_ne!(b_hash, c_hash);
+	}
+
+	#[test]
+	fn tensor_eq() {
+		let a = Tensor::computation(vec![3, 3, 3], 0);
+		let b = Tensor::computation(vec![3, 3, 3], 0);
+		assert_ne!(&a, &b);
+
+		let c = &a;
+		assert_eq!(&a, c);	
+
+	}
+
+
 	#[test]
 	#[should_panic]
 	fn bad_dot_dims() {
-		let a = Tensor::new(vec![32, 5, 6]);
-		let b = Tensor::new(vec![5, 12]);
+		let a = Tensor::placeholder(vec![32, 5, 6]);
+		let b = Tensor::placeholder(vec![5, 12]);
 		let c = a.dot(&b);
 	}
 
 	#[test]
 	fn dot_dims() {
-		let a = Tensor::new(vec![32, 5, 6]);
-		let b = Tensor::new(vec![6, 48, 5]);
+		let a = Tensor::placeholder(vec![32, 5, 6]);
+		let b = Tensor::placeholder(vec![6, 48, 5]);
 		let c = a.dot(&b);
 		assert_eq!(c.shape, vec![32, 5, 48, 5]);
 
-		let d = Tensor::new(vec![5]);
-		let e = Tensor::new(vec![5]);
+		let d = Tensor::placeholder(vec![5]);
+		let e = Tensor::placeholder(vec![5]);
 		let f = d.dot(&e);
 		assert_eq!(f.shape, vec![1]);
 	}
 
 	#[test]
 	fn broad_dims() {
-		let a = Tensor::new(vec![20, 50, 5]);
-		let b = Tensor::new(vec![20, 50, 5]);
+		let a = Tensor::placeholder(vec![20, 50, 5]);
+		let b = Tensor::placeholder(vec![20, 50, 5]);
 		assert_eq!(broadcast(&a, &b), vec![20, 50, 5]);
 
-		let c = Tensor::new(vec![1, 5]);
+		let c = Tensor::placeholder(vec![1, 5]);
 		assert_eq!(broadcast(&a, &c), vec![20, 50, 5]);
 
-		let d = Tensor::new(vec![80, 20, 1, 5]);
+		let d = Tensor::placeholder(vec![80, 20, 1, 5]);
 		assert_eq!(broadcast(&a, &d), vec![80, 20, 50, 5]);
 
-		let scalar = Tensor::new(vec![1]);
+		let scalar = Tensor::placeholder(vec![1]);
 		assert_eq!(broadcast(&a, &scalar), vec![20, 50, 5]);
 
-		let e = Tensor::new(vec![1, 25, 30, 40, 20, 1, 80]);
-		let f = Tensor::new(vec![       30,  1,  1, 1, 80]);
+		let e = Tensor::placeholder(vec![1, 25, 30, 40, 20, 1, 80]);
+		let f = Tensor::placeholder(vec![       30,  1,  1, 1, 80]);
 		assert_eq!(broadcast(&e, &f), vec![1, 25, 30, 40, 20, 1, 80]);
 
 	}
@@ -126,8 +186,8 @@ mod tests {
 	#[test]
 	#[should_panic(expected = "Failed to broadcast Tensors of shapes [12, 10, 80, 1, 1, 2] and [12, 20, 80, 4, 1, 1] since 10 != 20.")]
 	fn bad_broad_dims() {
-		let a = Tensor::new(vec![12, 10, 80, 1, 1, 2]);
-		let b = Tensor::new(vec![12, 20, 80, 4, 1, 1]);
+		let a = Tensor::placeholder(vec![12, 10, 80, 1, 1, 2]);
+		let b = Tensor::placeholder(vec![12, 20, 80, 4, 1, 1]);
 		let broad_shape = broadcast(&a, &b);
 	}
 }

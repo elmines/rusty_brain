@@ -6,7 +6,7 @@ use crate::core::Tensor;
 ///The number of weights is the size of x's last dimension times the projection size
 pub fn dense(x: Tensor, size: u64) -> Tensor {
 
-	let weights = Tensor::new( vec![x.shape[x.shape.len() - 1], size] );
+	let weights = Tensor::placeholder( vec![x.shape[x.shape.len() - 1], size] );
 
 	x.dot(&weights)
 }
