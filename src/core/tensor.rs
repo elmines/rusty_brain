@@ -1,68 +1,57 @@
-use std::ops::Mul;
-use std::ptr;
+use std;
+use crate::core::ops;
 
-use std::cmp::{PartialEq, Eq};
-use std::hash::{Hash, Hasher};
-
-#[derive(Debug)]
-pub struct Tensor {
+pub struct Tensor<'a> {
 	pub shape: Vec<u64>,
-	id: u128,
-	//preds: Vec<&'a Tensor<'a>>
+	pub id: u128,
+	pub preds: Vec<&'a Tensor<'a>>,
+	pub eval: ops::EvalFunc
 }
 
 
-impl Tensor {
+
+impl<'a> Tensor<'a> {
 	///Construct a Tensor from the given known shape
-	pub fn placeholder(shape: Vec<u64>) -> Tensor {
-		Tensor {shape, id: 0}
-	}
-
-	pub fn computation(shape: Vec<u64>, id: u128) -> Tensor {
-		Tensor {shape, id}
-	}
-
-	///Access the first dimension (it can make your code more readable, okay?)
-	pub fn first_dim(&self) -> u64 {self.shape[0]}
-	///Access the last dimension (sounds like something from science fiction, doesn't it?)
-	pub fn last_dim(&self) -> u64 {self.shape[self.shape.len()-1]}
-
-	///Compute the dot (or inner) product of two Tensors
-	///
-	///Panics if the last dimension of self and the first dimension of x aren't equal
-	pub fn dot(&self, x: &Tensor) -> Tensor {
-		if self.last_dim() != x.first_dim() {
-			panic!("Cannot compute inner product of lefthand Tensor of shape {:?} and righthand Tensor of shape {:?}. {} != {}",
-				self.shape, x.shape, self.last_dim(), x.first_dim())
-		}
-
-		let mut shape: Vec<u64> = vec![];
-		for &dim in (&self.shape[0..self.shape.len()-1]).iter() { shape.push(dim); }
-		for &dim in (&x.shape[1..]).iter() { shape.push(dim); }
-		if shape.len() < 1 { shape.push(1) }; //The inner product is a scalar
-
-		Tensor::placeholder(shape)
+	pub fn placeholder(shape: Vec<u64>) -> Tensor<'a> {
+		Tensor {shape, id: 0, preds: vec![], eval: ops::eval_placeholder}
 	}
 
 }
+impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
+	type Output = Tensor<'a>;
 
-impl<'a> PartialEq for &'a Tensor {
+	fn mul(self, rhs: &'a Tensor<'a>) -> Tensor<'a> {
+		let shape = broadcast(self, rhs);
+		let id = std::cmp::max(self.id, rhs.id);
+		let preds: Vec<&Tensor> = vec![self, rhs];
+		let eval = if self.shape.len() < rhs.shape.len() {ops::eval_reversed_mul} else {ops::eval_mul};
+
+		Tensor {shape, id, preds, eval}
+	}
+}
+
+//Common trait implementations
+impl<'a> std::cmp::PartialEq for &'a Tensor<'a> {
 	fn eq(&self, other: &&Tensor) -> bool {
-		ptr::eq(*self, *other)
+		std::ptr::eq(*self, *other)
 	}
 }
-impl<'a> Eq for &'a Tensor {}
-
-impl<'a> Hash for &'a Tensor {
-	fn hash<H: Hasher>(&self, state: &mut H) {
+impl<'a> std::cmp::Eq for &'a Tensor<'a> {}
+impl<'a> std::hash::Hash for &'a Tensor<'a> {
+	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
 		self.id.hash(state);
 	}
 }
+impl<'a> std::fmt::Debug for Tensor<'a> {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "Tensor {{ shape: {:?} }}", self.shape)
+	}
+}
 
 
-fn broadcast(l: &Tensor, r: &Tensor) -> Vec<u64> {
+pub fn broadcast(l: &Tensor, r: &Tensor) -> Vec<u64> {
 	let mut shape = vec![];
-	let (l_shape, r_shape) = (l.shape.clone(), r.shape.clone());//( &(l.shape), &(r.shape) );
+	let (l_shape, r_shape) = (l.shape.clone(), r.shape.clone());
 	let mut i = l_shape.len();
 	let mut j = r_shape.len();
 	while i > 0 && j > 0 {
@@ -88,16 +77,6 @@ fn broadcast(l: &Tensor, r: &Tensor) -> Vec<u64> {
 	shape
 }
 
-impl<'a> Mul<&'a Tensor> for &'a Tensor {
-	type Output = Tensor;
-
-	fn mul(self, rhs: &'a Tensor) -> Tensor {
-
-		let shape = broadcast(self, rhs);
-
-		Tensor::placeholder(shape)
-	}
-}
 
 
 #[cfg(test)]
@@ -105,6 +84,15 @@ mod tests {
 	use super::*;
 
 	use std::collections::hash_map::DefaultHasher;
+
+	#[test]
+	fn debug_trait() {
+		let x = Tensor::placeholder(vec![5, 28, 4]);
+		let formatted = format!("{:?}", x);
+		assert_eq!(String::from("Tensor { shape: [5, 28, 4] }"), formatted);
+	}
+
+/*
 
 	#[test]
 	fn tensor_hash() {
@@ -139,6 +127,7 @@ mod tests {
 		assert_eq!(&a, c);	
 
 	}
+*/
 
 
 	#[test]
