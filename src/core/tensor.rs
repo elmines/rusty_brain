@@ -8,15 +8,13 @@ pub struct Tensor<'a> {
 	pub eval: ops::EvalFunc
 }
 
-
-
 impl<'a> Tensor<'a> {
 	///Construct a Tensor from the given known shape
 	pub fn placeholder(shape: Vec<u64>) -> Tensor<'a> {
 		Tensor {shape, id: 0, preds: vec![], eval: ops::eval_placeholder}
 	}
-
 }
+
 impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
 	type Output = Tensor<'a>;
 

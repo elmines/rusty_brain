@@ -1,88 +1,79 @@
-extern crate ndarray;
-use self::ndarray::Array;
-
 use std::collections::HashMap;
-
 use crate::core::tensor::Tensor;
+use crate::core::types::RBArray;
 
-
-
-fn push_preds(comp_stack: &mut Vec<&Tensor>, x: &Tensor) {
-	for pred in x.preds().iter() { comp_stack.push(pred); }
+pub struct Session {
+	mut feeds: &HashMap<&Tensor, &RBArray>
+	mut comps: HashMap<&Tensor, RBArray>,
+	mut comp_stack: &mut Vec<&Tensor>
 }
-
-fn extract_pred(x: &Tensor, feeds: &HashMap<&Tensor, &Array<f32, f64>>, fetches: Vec<&Tensor>) => {
-
-	match (feeds.get(x), fetches.get(x)) {
-
-		(Some(feed), _
-
-	}
-
-}
-
-pub struct Session {}
 impl Session {
 	fn new() -> Session {
-		Session {}
+		Session {feeds: HashMap::new(), comps: HashMap::new()}
 	}
 
+	///Determines whether x has already been feeded or computed
+	fn extract_val(&self, x: &Tensor) -> Option<&RBArray> {
+		match (self.feeds.get(x), self.comps.get(x)) {
+			(Some(&feed), _          ) => Some(feed),
+			(_          , Some(comp) ) => Some(comp)
+			 _                         => None
+		}
+	}
 
-	fn run(&self, feeds: &HashMap<&Tensor, &Array<f32, u64>>, fetches: Vec<&Tensor>) -> Vec<Array<f32, u64>> {
+	///Push all predecessors of x, direct or indirect, to the comp_stack
+	fn push_preds(&self, x: &Tensor) {
+		for pred in x.preds().iter() {
+			if None == self.extract_val(pred){
+				self.comp_stack.push(pred);
+				self.push_preds(pred);
+			}
+		}
+	}
+	
+
+	fn run(&self, feeds: &HashMap<&Tensor, &RBArray>, fetches: Vec<&Tensor>) -> Vec<RBArray> {
 		
-		let mut comps: HashMap<&Tensor, Array<f32, u64>> = HashMap::new();
-		let mut evaluations: Vec<Array<f32, u64>> = vec![];
+		self.feeds = feeds;
+		self.comp_stack.clear();
+		self.comps.clear();
 
-		let mut fetch_stack: Vec<&Tensor> = vec![];
-
-		for fetch in fetches.iter() { fetch_stack.push(fetch); }
-
+		let mut evaluations: Vec<RBArray> = vec![];
 		//Invariants
 		// Pre-execution: evaluations is empty
 		// After an iteration: evaluations has at its tail the evaluation of the fetch
-
 		for fetch in fetches.iter() {
-
 			if Some(&feed) = feeds.get(fetch) {
 				eprintln!("WARNING: You are fetching {:?}, which you already feeded.", fetch);
 				evaluations.push(feed.clone());
 				continue;
 			}
+			self.comp_stack.push(fetch);
+			self.push_preds(fetch);
 
-			let mut comp_stack: Vec<&Tensor> = vec![fetch];
 
+			//Invariant: the top element of the stack already has its predecessors computed
+			//Invariant: After the loop has been executed, fetch's value is in comps
 			while comp_stack.len() > 0 {
+				let ready_comp = comp_stack.pop().unwrap();
 
-				let mut next_comp = comp_stack[comp_stack.len() - 1];
+				//The Tensor was already computed earlier
+				if None == self.extract_val(ready_comp) {continue;}
 
-				while next_comp.preds.len() > 0 {
-					//Check for a feed made by an intermediate computation
-					if let None = feeds.get(next_comp) {
-						push_preds(&mut comp_stack, next_comp);
-
-					}
+				let pred_vals: Vec<RBArray> = vec![];
+				for pred in ready_comp.preds.iter() {
+					let pred_value = extract_val(pred, &feeds, &fetches);
+					assert_ne!(pred_value, None);
+					pred_vals.push(pred_value.unwrap());
 				}
-
-				while comp_stack[comp_stack.len() - 1] != next_comp {
-
-					//All the Tensors predecessors have been computed
-					let ready_comp = comp_stack.pop().unwrap();
-
-					//The Tensor was already computed somewhere else
-					if let Some(feed) = feeds.get(ready_comp) | let Some(comp) = comps.get(ready_comp) {continue;}
-
-					let pred_vals = vec![];
-					for pred in ready_comp.preds() {
-						pred_vals.push( 
-
-				}
-
+				let result: RBArray = (ready_comp.eval)(&pred_vals);
+				comps.insert(pred, result);
 			}
-		
+			let fetch_value = comps.get(fetch);
+			assert_ne!(fetch_value, None);
+			evaluations.push(fetch_value);
 		}
-
 		evaluations
 	}
-
 }
 
