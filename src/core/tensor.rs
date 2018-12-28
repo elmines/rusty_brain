@@ -7,6 +7,7 @@ pub struct Tensor<'a> {
 	pub preds: Vec<&'a Tensor<'a>>,
 	pub eval: ops::EvalFunc
 }
+//TODO: Use lifetime subtyping to let preds outlive Tensor
 
 impl<'a> Tensor<'a> {
 	///Construct a Tensor from the given known shape
