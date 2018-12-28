@@ -4,5 +4,6 @@ pub use self::tensor::*;
 mod session;
 pub use self::session::*;
 
-//Private module
+//Private modules
 mod ops;
+mod types;
