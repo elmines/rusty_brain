@@ -12,21 +12,25 @@ use std::collections::HashMap;
 
 fn main() {
 
-	let x = Tensor::placeholder(vec![1]);
-	let y = Tensor::placeholder(vec![1]);
-
+	let x = Tensor::placeholder(vec![1], Some(String::from("x")));
+	let y = Tensor::placeholder(vec![1], Some(String::from("y")));
 	let z = &x * &y;
 
-	let mut sess = Session::new();
 
-	let x_feed: RBArray = ArrayD::<f32>::zeros(IxDyn(&[1]));
-	let y_feed: RBArray = ArrayD::<f32>::zeros(IxDyn(&[1]));
+	let mut x_feed: RBArray = ArrayD::<f32>::zeros(IxDyn(&[1]));
+	x_feed[0] = 5.;
+	let mut y_feed: RBArray = ArrayD::<f32>::zeros(IxDyn(&[1]));
+	y_feed[0] = 3.;
 
 	let mut feeds: HashMap<&Tensor, &RBArray> = HashMap::new();
-	//feeds.insert(&x, &x_feed);
-	//feeds.insert(&y, &y_feed);
-	//let fetches: Vec<&Tensor> = vec![&z];
 
-	//let results: Vec<RBArray> = sess.run(feeds, fetches);
+	feeds.insert(&x, &x_feed);
+	feeds.insert(&y, &y_feed);
+	let fetches: Vec<&Tensor> = vec![&z];
+
+	let mut sess = Session::new();
+	let results: Vec<RBArray> = sess.run(feeds, fetches);
+
+	println!("{:?}", results);
 
 }

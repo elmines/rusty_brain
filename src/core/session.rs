@@ -23,6 +23,9 @@ impl<'a> Session<'a> {
 		// Pre-execution: evaluations is empty
 		// After an iteration: evaluations has at its tail the evaluation of the fetch
 		for fetch in fetches.iter() {
+			//println!("Computing fetch {:?}", fetch);
+			assert_eq!(self.comp_stack.len(), 0);
+
 			if let Some(&feed) = self.feeds.get(fetch) {
 				eprintln!("WARNING: You are fetching {:?}, which you already feeded.", fetch);
 				evaluations.push(feed.clone());
@@ -31,14 +34,15 @@ impl<'a> Session<'a> {
 			self.comp_stack.push(fetch);
 			self.push_preds(fetch);
 
-
 			//Invariant: the top element of the stack already has its predecessors computed
 			//Invariant: After the loop has been executed, fetch's value is in comps
+			//println!("About to travel up the comp_stack = {:?}", self.comp_stack);
 			while self.comp_stack.len() > 0 {
 				let ready_comp = self.comp_stack.pop().unwrap();
+				//println!("\tComputing ready_comp {:?}", ready_comp);
 
 				//The Tensor was already computed earlier
-				if None == self.extract_val(ready_comp) {continue;}
+				if None != self.extract_val(ready_comp) {continue;}
 
 				let result: RBArray = {
 					let mut pred_vals: Vec<&RBArray> = vec![];
@@ -49,8 +53,12 @@ impl<'a> Session<'a> {
 					}
 					(ready_comp.eval)(&pred_vals)
 				};
+				//println!("\tresult = {:?}", result);
 				self.comps.insert(ready_comp, result);
 			}
+
+			//let fetch_value = self.comps.remove(fetch);
+			//assert_ne!(fetch_value, None);
 		}
 
 		//Second pass: Move the fetch values from comps to evaluations
@@ -79,7 +87,9 @@ impl<'a> Session<'a> {
 
 	///Push all predecessors of x, direct or indirect, to the comp_stack
 	fn push_preds(&mut self, x: &'a Tensor) {
+		//println!("Pushing the predecessors of {:?} to comp_stack", x);
 		for pred in x.preds.iter() {
+			//println!("\tChecking the pred {:?}", pred);
 			if None == self.extract_val(pred){
 				self.comp_stack.push(pred);
 				self.push_preds(pred);
