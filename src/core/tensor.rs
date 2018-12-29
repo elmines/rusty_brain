@@ -6,7 +6,7 @@ pub struct Tensor<'a> {
 	shape: Vec<u64>,
 	id: u128,
 	name: String,
-	pub preds: Vec<&'a Tensor<'a>>,
+	preds_list: Vec<&'a Tensor<'a>>,
 	eval_fn: ops::EvalFunc
 }
 //TODO: Use lifetime subtyping to let preds outlive Tensor
@@ -17,10 +17,12 @@ impl<'a> Tensor<'a> {
 
 		let name_val = if let Some(val) = name {val} else {String::from("placeholder")};
 
-		Tensor {shape, id: 0, name: name_val, preds: vec![], eval_fn: ops::eval_placeholder}
+		Tensor {shape, id: 0, name: name_val, preds_list: vec![], eval_fn: ops::eval_placeholder}
 	}
 
 	pub fn eval(&self, operands: &Vec<&RBArray>) -> RBArray{ (self.eval_fn)(operands) }
+
+	pub fn preds(&self) -> &Vec<&Tensor> {&(self.preds_list)}
 
 }
 
@@ -30,10 +32,10 @@ impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
 	fn mul(self, rhs: &'a Tensor<'a>) -> Tensor<'a> {
 		let shape = broadcast(self, rhs);
 		let id = std::cmp::max(self.id, rhs.id);
-		let preds: Vec<&Tensor> = vec![self, rhs];
+		let preds_list: Vec<&Tensor> = vec![self, rhs];
 		let eval_fn = if self.shape.len() < rhs.shape.len() {ops::eval_reversed_mul} else {ops::eval_mul};
 
-		Tensor {shape, id, name: String::from("product"), preds, eval_fn}
+		Tensor {shape, id, name: String::from("product"), preds_list, eval_fn}
 	}
 }
 
@@ -46,12 +48,12 @@ impl<'a> std::cmp::PartialEq for &'a Tensor<'a> {
 impl<'a> std::cmp::Eq for &'a Tensor<'a> {}
 impl<'a> std::hash::Hash for &'a Tensor<'a> {
 	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-		self.id.hash(state);
+		self.name.hash(state);
 	}
 }
 impl<'a> std::fmt::Debug for Tensor<'a> {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f, "Tensor {{ shape: {:?}, name: {} }}", self.shape, self.name)
+		write!(f, "Tensor {{ shape: {:?}, name: \"{}\" }}", self.shape, self.name)
 	}
 }
 
@@ -85,27 +87,42 @@ pub fn broadcast(l: &Tensor, r: &Tensor) -> Vec<u64> {
 }
 
 
-/*
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 
 	use std::collections::hash_map::DefaultHasher;
+	use std::hash::{Hash, Hasher};
 
 	#[test]
 	fn debug_trait() {
-		let x = Tensor::placeholder(vec![5, 28, 4]);
-		let formatted = format!("{:?}", x);
-		assert_eq!(String::from("Tensor { shape: [5, 28, 4] }"), formatted);
+		let x = Tensor::placeholder(vec![5, 28, 4], None);
+		let formatted_x = format!("{:?}", x);
+		assert_eq!(String::from("Tensor { shape: [5, 28, 4], name: \"placeholder\" }"), formatted_x);
+
+		let y = Tensor::placeholder(vec![1], Some(String::from("why")));
+		let formatted_y = format!("{:?}", y);
+		assert_eq!(String::from("Tensor { shape: [1], name: \"why\" }"), formatted_y);
 	}
 
 
+	#[test]
+	fn tensor_eq() {
+		let a =       Tensor::placeholder(vec![3, 3, 3], Some(String::from("a")));
+		let other_a = Tensor::placeholder(vec![3, 3, 3], Some(String::from("a")));
+		assert_ne!(&a, &other_a);
+
+		let c = &a;
+		assert_eq!(&a, c);	
+
+	}
 
 	#[test]
 	fn tensor_hash() {
-		let a = Tensor::computation(vec![5, 5, 5], 0);
-		let b = Tensor::computation(vec![3], 0);
-		let c = Tensor::computation(vec![5, 5, 5], 1);
+		let a = Tensor::placeholder(vec![5, 5, 5], Some(String::from("a placeholder")));
+		let b = Tensor::placeholder(vec![3], Some(String::from("a placeholder")));
+		let c = Tensor::placeholder(vec![5, 5, 5], Some(String::from("more than just a placeholder")));
 
 		let mut hasher_a = DefaultHasher::new();
 		let mut hasher_b = DefaultHasher::new();
@@ -125,56 +142,22 @@ mod tests {
 	}
 
 	#[test]
-	fn tensor_eq() {
-		let a = Tensor::computation(vec![3, 3, 3], 0);
-		let b = Tensor::computation(vec![3, 3, 3], 0);
-		assert_ne!(&a, &b);
-
-		let c = &a;
-		assert_eq!(&a, c);	
-
-	}
-
-
-
-	#[test]
-	#[should_panic]
-	fn bad_dot_dims() {
-		let a = Tensor::placeholder(vec![32, 5, 6]);
-		let b = Tensor::placeholder(vec![5, 12]);
-		let c = a.dot(&b);
-	}
-
-	#[test]
-	fn dot_dims() {
-		let a = Tensor::placeholder(vec![32, 5, 6]);
-		let b = Tensor::placeholder(vec![6, 48, 5]);
-		let c = a.dot(&b);
-		assert_eq!(c.shape, vec![32, 5, 48, 5]);
-
-		let d = Tensor::placeholder(vec![5]);
-		let e = Tensor::placeholder(vec![5]);
-		let f = d.dot(&e);
-		assert_eq!(f.shape, vec![1]);
-	}
-
-	#[test]
 	fn broad_dims() {
-		let a = Tensor::placeholder(vec![20, 50, 5]);
-		let b = Tensor::placeholder(vec![20, 50, 5]);
+		let a = Tensor::placeholder(vec![20, 50, 5], None);
+		let b = Tensor::placeholder(vec![20, 50, 5], None);
 		assert_eq!(broadcast(&a, &b), vec![20, 50, 5]);
 
-		let c = Tensor::placeholder(vec![1, 5]);
+		let c = Tensor::placeholder(vec![1, 5], None);
 		assert_eq!(broadcast(&a, &c), vec![20, 50, 5]);
 
-		let d = Tensor::placeholder(vec![80, 20, 1, 5]);
+		let d = Tensor::placeholder(vec![80, 20, 1, 5], None);
 		assert_eq!(broadcast(&a, &d), vec![80, 20, 50, 5]);
 
-		let scalar = Tensor::placeholder(vec![1]);
+		let scalar = Tensor::placeholder(vec![1], None);
 		assert_eq!(broadcast(&a, &scalar), vec![20, 50, 5]);
 
-		let e = Tensor::placeholder(vec![1, 25, 30, 40, 20, 1, 80]);
-		let f = Tensor::placeholder(vec![       30,  1,  1, 1, 80]);
+		let e = Tensor::placeholder(vec![1, 25, 30, 40, 20, 1, 80], None);
+		let f = Tensor::placeholder(vec![       30,  1,  1, 1, 80], None);
 		assert_eq!(broadcast(&e, &f), vec![1, 25, 30, 40, 20, 1, 80]);
 
 	}
@@ -182,8 +165,9 @@ mod tests {
 	#[test]
 	#[should_panic(expected = "Failed to broadcast Tensors of shapes [12, 10, 80, 1, 1, 2] and [12, 20, 80, 4, 1, 1] since 10 != 20.")]
 	fn bad_broad_dims() {
-		let a = Tensor::placeholder(vec![12, 10, 80, 1, 1, 2]);
-		let b = Tensor::placeholder(vec![12, 20, 80, 4, 1, 1]);
+		let a = Tensor::placeholder(vec![12, 10, 80, 1, 1, 2], None);
+		let b = Tensor::placeholder(vec![12, 20, 80, 4, 1, 1], None);
 		let broad_shape = broadcast(&a, &b);
 	}
-}*/
+
+}

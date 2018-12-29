@@ -46,7 +46,7 @@ impl<'a> Session<'a> {
 
 				let result: RBArray = {
 					let mut pred_vals: Vec<&RBArray> = vec![];
-					for pred in ready_comp.preds.iter() {
+					for pred in ready_comp.preds().iter() {
 						let pred_value = self.extract_val(pred);
 						assert_ne!(pred_value, None);
 						pred_vals.push(pred_value.unwrap());
@@ -88,7 +88,7 @@ impl<'a> Session<'a> {
 	///Push all predecessors of x, direct or indirect, to the comp_stack
 	fn push_preds(&mut self, x: &'a Tensor) {
 		//println!("Pushing the predecessors of {:?} to comp_stack", x);
-		for pred in x.preds.iter() {
+		for pred in x.preds().iter() {
 			//println!("\tChecking the pred {:?}", pred);
 			if None == self.extract_val(pred){
 				self.comp_stack.push(pred);
