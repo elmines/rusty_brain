@@ -51,7 +51,7 @@ impl<'a> Session<'a> {
 						assert_ne!(pred_value, None);
 						pred_vals.push(pred_value.unwrap());
 					}
-					(ready_comp.eval)(&pred_vals)
+					ready_comp.eval(&pred_vals)
 				};
 				//println!("\tresult = {:?}", result);
 				self.comps.insert(ready_comp, result);

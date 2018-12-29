@@ -1,20 +1,27 @@
 use std;
 use crate::core::ops;
+use crate::core::types::RBArray;
 
 pub struct Tensor<'a> {
-	pub shape: Vec<u64>,
-	pub id: u128,
-	pub name: Option<String>,
+	shape: Vec<u64>,
+	id: u128,
+	name: String,
 	pub preds: Vec<&'a Tensor<'a>>,
-	pub eval: ops::EvalFunc
+	eval_fn: ops::EvalFunc
 }
 //TODO: Use lifetime subtyping to let preds outlive Tensor
 
 impl<'a> Tensor<'a> {
 	///Construct a Tensor from the given known shape
 	pub fn placeholder(shape: Vec<u64>, name: Option<String>) -> Tensor<'a> {
-		Tensor {shape, id: 0, name, preds: vec![], eval: ops::eval_placeholder}
+
+		let name_val = if let Some(val) = name {val} else {String::from("placeholder")};
+
+		Tensor {shape, id: 0, name: name_val, preds: vec![], eval_fn: ops::eval_placeholder}
 	}
+
+	pub fn eval(&self, operands: &Vec<&RBArray>) -> RBArray{ (self.eval_fn)(operands) }
+
 }
 
 impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
@@ -24,9 +31,9 @@ impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
 		let shape = broadcast(self, rhs);
 		let id = std::cmp::max(self.id, rhs.id);
 		let preds: Vec<&Tensor> = vec![self, rhs];
-		let eval = if self.shape.len() < rhs.shape.len() {ops::eval_reversed_mul} else {ops::eval_mul};
+		let eval_fn = if self.shape.len() < rhs.shape.len() {ops::eval_reversed_mul} else {ops::eval_mul};
 
-		Tensor {shape, id, name: Some(String::from("product")), preds, eval}
+		Tensor {shape, id, name: String::from("product"), preds, eval_fn}
 	}
 }
 
@@ -44,12 +51,7 @@ impl<'a> std::hash::Hash for &'a Tensor<'a> {
 }
 impl<'a> std::fmt::Debug for Tensor<'a> {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-
-		match &(self.name) {
-			Some(name) => write!(f, "Tensor {{ shape: {:?}, name: {:?} }}", self.shape, name),
-			_          => write!(f, "Tensor {{ shape: {:?} }}", self.shape)
-		}
-		
+		write!(f, "Tensor {{ shape: {:?}, name: {} }}", self.shape, self.name)
 	}
 }
 
