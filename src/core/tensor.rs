@@ -26,14 +26,21 @@ impl<'a> Tensor<'a> {
 
 }
 
+fn reverse_operands(l_shape: &Vec<u64>, _r_shape: &Vec<u64>) -> bool {
+	l_shape.len() == 1 && l_shape[0] == 1
+}
+
 impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
 	type Output = Tensor<'a>;
 
 	fn mul(self, rhs: &'a Tensor<'a>) -> Tensor<'a> {
-		let shape = broadcast(self, rhs);
+		let reverse = reverse_operands(&self.shape, &rhs.shape);
+
 		let id = std::cmp::max(self.id, rhs.id);
 		let preds_list: Vec<&Tensor> = vec![self, rhs];
-		let eval_fn = if self.shape.len() < rhs.shape.len() {ops::eval_reversed_mul} else {ops::eval_mul};
+
+		let shape = if reverse { broadcast(rhs, &self) } else { broadcast(&self, rhs) };
+		let eval_fn = if reverse {ops::eval_reversed_mul} else {ops::eval_mul};
 
 		Tensor {shape, id, name: String::from("product"), preds_list, eval_fn}
 	}
