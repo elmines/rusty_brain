@@ -10,6 +10,8 @@ use ndarray::IxDyn;
 
 use std::collections::HashMap;
 
+use rusty_brain::utils::into_dynamic;
+
 fn main() {
 
 	let x = Tensor::placeholder(vec![3], Some(String::from("x")));
@@ -18,14 +20,11 @@ fn main() {
 
 	println!("z = {:?}", z);
 
-	let mut x_feed: RBArray = ArrayD::<f32>::zeros(IxDyn(&[3]));
-	x_feed[0] = 5.; x_feed[1] = 2.;
+	let x_feed = into_dynamic(array![ [5., 2.] ]);
+	let y_feed = into_dynamic(array![ 3. ]);
 
-	let mut y_feed: RBArray = ArrayD::<f32>::zeros(IxDyn(&[1]));
-	y_feed[0] = 3.;
 
 	let mut feeds: HashMap<&Tensor, &RBArray> = HashMap::new();
-
 	feeds.insert(&x, &x_feed);
 	feeds.insert(&y, &y_feed);
 	let fetches: Vec<&Tensor> = vec![&z];

@@ -4,5 +4,6 @@ pub use core::*;
 pub mod layers;
 //pub use layers;
 
+pub mod utils;
+
 extern crate ndarray;
-//pub mod self::ndarray;
