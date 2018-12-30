@@ -1,3 +1,3 @@
 use crate::ndarray;
 
-pub type RBArray = ndarray::Array<f32, ndarray::IxDyn>;
+pub type RBArray = ndarray::ArrayD<f32>;
