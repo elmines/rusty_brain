@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use crate::core::tensor::Tensor;
-use crate::core::types::RBArray;
+use crate::ndarray::ArrayD;
 
 pub struct Session<'a> {
-	feeds:      HashMap<&'a Tensor<'a>, &'a RBArray>,
-	comps:      HashMap<&'a Tensor<'a>, RBArray>,
+	feeds:      HashMap<&'a Tensor<'a>, &'a ArrayD<f32>>,
+	comps:      HashMap<&'a Tensor<'a>, ArrayD<f32>>,
 	comp_stack: Vec<&'a Tensor<'a>>,
 }
 impl<'a> Session<'a> {
@@ -12,13 +12,13 @@ impl<'a> Session<'a> {
 		Session {feeds: HashMap::new(), comps: HashMap::new(), comp_stack: vec![]}
 	}
 
-	pub fn run(&mut self, feeds: HashMap<&'a Tensor, &'a RBArray>, fetches: Vec<&'a Tensor>) -> Vec<RBArray> {
+	pub fn run(&mut self, feeds: HashMap<&'a Tensor, &'a ArrayD<f32>>, fetches: Vec<&'a Tensor>) -> Vec<ArrayD<f32>> {
 		
 		self.feeds = feeds;
 		self.comp_stack.clear();
 		self.comps.clear();
 
-		let mut evaluations: Vec<RBArray> = vec![];
+		let mut evaluations: Vec<ArrayD<f32>> = vec![];
 		//Invariants
 		// Pre-execution: evaluations is empty
 		// After an iteration: evaluations has at its tail the evaluation of the fetch
@@ -44,8 +44,8 @@ impl<'a> Session<'a> {
 				//The Tensor was already computed earlier
 				if None != self.extract_val(ready_comp) {continue;}
 
-				let result: RBArray = {
-					let mut pred_vals: Vec<&RBArray> = vec![];
+				let result: ArrayD<f32> = {
+					let mut pred_vals: Vec<&ArrayD<f32>> = vec![];
 					for pred in ready_comp.preds().iter() {
 						let pred_value = self.extract_val(pred);
 						assert_ne!(pred_value, None);
@@ -72,7 +72,7 @@ impl<'a> Session<'a> {
 	}
 
 	///Determines whether x has already been feeded or computed
-	fn extract_val(&'a self, x: &'a Tensor) -> Option<&'a RBArray> {
+	fn extract_val(&'a self, x: &'a Tensor) -> Option<&'a ArrayD<f32>> {
 
 		if let Some(&feed) = self.feeds.get(&x) {
 			return Some(feed);

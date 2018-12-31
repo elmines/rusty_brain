@@ -1,6 +1,6 @@
 use std;
 use crate::core::ops;
-use crate::core::types::RBArray;
+use crate::ndarray::ArrayD;
 
 pub struct Tensor<'a> {
 	shape: Vec<u64>,
@@ -20,7 +20,7 @@ impl<'a> Tensor<'a> {
 		Tensor {shape, id: 0, name: name_val, preds_list: vec![], eval_fn: ops::eval_placeholder}
 	}
 
-	pub fn eval(&self, operands: &Vec<&RBArray>) -> RBArray{ (self.eval_fn)(operands) }
+	pub fn eval(&self, operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32>{ (self.eval_fn)(operands) }
 
 	pub fn preds(&self) -> &Vec<&Tensor> {&(self.preds_list)}
 

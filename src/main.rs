@@ -1,12 +1,10 @@
 extern crate rusty_brain;
 use rusty_brain::Tensor;
-use rusty_brain::RBArray;
 use rusty_brain::Session;
 
 #[macro_use(array)]
 extern crate ndarray;
 use ndarray::ArrayD;
-use ndarray::IxDyn;
 
 use std::collections::HashMap;
 
@@ -24,13 +22,13 @@ fn main() {
 	let y_feed = into_dynamic(array![ 3. ]);
 
 
-	let mut feeds: HashMap<&Tensor, &RBArray> = HashMap::new();
+	let mut feeds: HashMap<&Tensor, &ArrayD<f32>> = HashMap::new();
 	feeds.insert(&x, &x_feed);
 	feeds.insert(&y, &y_feed);
 	let fetches: Vec<&Tensor> = vec![&z];
 
 	let mut sess = Session::new();
-	let results: Vec<RBArray> = sess.run(feeds, fetches);
+	let results: Vec<ArrayD<f32>> = sess.run(feeds, fetches);
 
 	println!("{:?}", results);
 

@@ -1,21 +1,21 @@
 use crate::core::tensor::Tensor;
-use crate::core::types::RBArray;
+use crate::ndarray::ArrayD;
 
 ///A pointer to a function taking in the concrete operands of a Tensor, and returning the concrete result
-pub type EvalFunc = fn(&Vec<&RBArray>) -> RBArray;
+pub type EvalFunc = fn(&Vec<&ArrayD<f32>>) -> ArrayD<f32>;
 
-pub fn eval_placeholder(_operands: &Vec<&RBArray>) -> RBArray {
+pub fn eval_placeholder(_operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
 	panic!("You failed to feed a placeholder.");
 }
 
-pub fn eval_reversed_mul(operands: &Vec<&RBArray>) -> RBArray {
+pub fn eval_reversed_mul(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
 	if operands.len() != 2 {
 		panic!("Tried to perform a multiplication operation on {} operands rather than 2.", operands.len())
 	}
 	eval_mul(&vec![operands[1], operands[0]])
 }
 
-pub fn eval_mul(operands: &Vec<&RBArray>) -> RBArray {
+pub fn eval_mul(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
 
 	if operands.len() != 2 {
 		panic!("Tried to perform a multiplication operation on {} operands rather than 2.", operands.len())
