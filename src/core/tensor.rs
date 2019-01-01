@@ -31,8 +31,8 @@ impl<'a> Tensor<'a> {
 
 }
 
-fn reverse_operands(l_shape: &Vec<u64>, _r_shape: &Vec<u64>) -> bool {
-	l_shape.len() == 1 && l_shape[0] == 1
+fn reverse_operands(l_shape: &Vec<u64>, r_shape: &Vec<u64>) -> bool {
+	l_shape.len() < r_shape.len()
 }
 
 macro_rules! binary_op{
@@ -43,6 +43,7 @@ macro_rules! binary_op{
 		
 			fn $method(self, rhs: &'a Tensor<'a>) -> Tensor<'a> {
 				let reverse = reverse_operands(&self.shape, &rhs.shape);
+
 		
 				let id = std::cmp::max(self.id, rhs.id);
 				let preds_list: Vec<&Tensor> = vec![self, rhs];

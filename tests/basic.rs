@@ -1,6 +1,6 @@
 extern crate rusty_brain;
-use rusty_brain::Tensor;
-use rusty_brain::Session;
+use rusty_brain::{Tensor, Session};
+use rusty_brain::utils::into_dynamic;
 
 #[macro_use(array)]
 extern crate ndarray;
@@ -8,14 +8,11 @@ use ndarray::{ArrayD, Array};
 
 use std::collections::HashMap;
 
-use rusty_brain::utils::into_dynamic;
+mod common;
+use common::close;
 
-fn close(x: ArrayD<f32>, y: ArrayD<f32>) -> bool {
-	(x - y).fold(true, |accum, element| accum && (element.abs() < 0.01) )
-}
-
-fn main() {
-
+#[test]
+fn simple_arithmetic() {
 	let a = Tensor::placeholder(vec![2, 2], Some(String::from("a")));
 	let b = Tensor::placeholder(vec![2], Some(String::from("b")));
 	let c = Tensor::placeholder(vec![2, 2, 2], Some(String::from("c")));
@@ -53,11 +50,12 @@ fn main() {
 
 	];
 
-	//let mut sess = Session::new();
+	let num_fetches = fetches.len();
 	let results = Session::new().run(feeds, fetches);
 
+	assert_eq!(num_fetches, results.len());
 	for (result, expected) in results.into_iter().zip(expected_results) {
 		assert!(close(result, expected));
 	}
-
 }
+
