@@ -6,4 +6,5 @@ pub mod layers;
 
 pub mod utils;
 
+#[macro_use(array)]
 extern crate ndarray;
