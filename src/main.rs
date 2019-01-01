@@ -14,9 +14,10 @@ fn main() {
 
 	let x = Tensor::placeholder(vec![3], Some(String::from("x")));
 	let y = Tensor::placeholder(vec![1], Some(String::from("y")));
-	let z = &y * &x;
-
-	println!("z = {:?}", z);
+	let sum = &y + &x;
+	let difference = &y - &x;
+	let product = &y * &x;
+	let quotient = &y / &x;
 
 	let x_feed = into_dynamic(array![ [5., 2.] ]);
 	let y_feed = into_dynamic(array![ 3. ]);
@@ -25,11 +26,16 @@ fn main() {
 	let mut feeds: HashMap<&Tensor, &ArrayD<f32>> = HashMap::new();
 	feeds.insert(&x, &x_feed);
 	feeds.insert(&y, &y_feed);
-	let fetches: Vec<&Tensor> = vec![&z];
+	let fetches: Vec<&Tensor> = vec![&sum, &difference, &product, &quotient];
 
 	let mut sess = Session::new();
 	let results: Vec<ArrayD<f32>> = sess.run(feeds, fetches);
 
-	println!("{:?}", results);
+	println!("x =\n{}\n", x_feed);
+	println!("y =\n{}\n", y_feed);
+
+	for result in results.iter() {
+		println!("{:?}", result);
+	}
 
 }

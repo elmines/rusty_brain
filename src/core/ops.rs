@@ -8,20 +8,55 @@ pub fn eval_placeholder(_operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
 	panic!("You failed to feed a placeholder.");
 }
 
+pub fn eval_reversed_add(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
+	if operands.len() != 2 {
+		panic!("Tried to perform an addition operation on {} operands rather than 2.", operands.len())
+	}
+	eval_add(&vec![operands[1], operands[0]])
+}
+pub fn eval_add(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
+	if operands.len() != 2 {
+		panic!("Tried to perform an addition operation on {} operands rather than 2.", operands.len())
+	}
+	operands[0] + operands[1]
+}
+pub fn eval_reversed_sub(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
+	if operands.len() != 2 {
+		panic!("Tried to perform a subtraction operation on {} operands rather than 2.", operands.len())
+	}
+	-operands[1] + operands[0]
+}
+pub fn eval_sub(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
+	if operands.len() != 2 {
+		panic!("Tried to perform a subtraction operation on {} operands rather than 2.", operands.len())
+	}
+	operands[0] - operands[1]
+}
 pub fn eval_reversed_mul(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
 	if operands.len() != 2 {
 		panic!("Tried to perform a multiplication operation on {} operands rather than 2.", operands.len())
 	}
 	eval_mul(&vec![operands[1], operands[0]])
 }
-
 pub fn eval_mul(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
-
 	if operands.len() != 2 {
 		panic!("Tried to perform a multiplication operation on {} operands rather than 2.", operands.len())
 	}
 	operands[0] * operands[1]
 }
+pub fn eval_reversed_div(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
+	if operands.len() != 2 {
+		panic!("Tried to perform a division operation on {} operands rather than 2.", operands.len())
+	}
+	eval_div(&vec![operands[1], operands[0]])
+}
+pub fn eval_div(operands: &Vec<&ArrayD<f32>>) -> ArrayD<f32> {
+	if operands.len() != 2 {
+		panic!("Tried to perform a division operation on {} operands rather than 2.", operands.len())
+	}
+	operands[0] / operands[1]
+}
+
 
 /*
 	///Compute the dot (or inner) product of two Tensors

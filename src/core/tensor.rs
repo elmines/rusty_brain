@@ -1,5 +1,10 @@
 use std;
 use crate::core::ops;
+use crate::core::ops::{eval_add, eval_reversed_add,
+			eval_sub, eval_reversed_sub,
+			eval_mul, eval_reversed_mul,
+			eval_div, eval_reversed_div
+			};
 use crate::ndarray::ArrayD;
 
 pub struct Tensor<'a> {
@@ -30,6 +35,32 @@ fn reverse_operands(l_shape: &Vec<u64>, _r_shape: &Vec<u64>) -> bool {
 	l_shape.len() == 1 && l_shape[0] == 1
 }
 
+macro_rules! binary_op{
+	($trait: ident, $method: ident, $normal: ident, $reversed: ident) => {
+
+		impl<'a> std::ops::$trait<&'a Tensor<'a>> for &'a Tensor<'a> {
+			type Output = Tensor<'a>;
+		
+			fn $method(self, rhs: &'a Tensor<'a>) -> Tensor<'a> {
+				let reverse = reverse_operands(&self.shape, &rhs.shape);
+		
+				let id = std::cmp::max(self.id, rhs.id);
+				let preds_list: Vec<&Tensor> = vec![self, rhs];
+		
+				let shape =   if reverse { broadcast(rhs, &self) } else { broadcast(&self, rhs) };
+				let eval_fn = if reverse { $reversed } else { $normal };
+		
+				Tensor {shape, id, name: String::from("product"), preds_list, eval_fn}
+			}
+		}
+	}
+}
+binary_op!(Add, add, eval_add, eval_reversed_add);
+binary_op!(Sub, sub, eval_sub, eval_reversed_sub);
+binary_op!(Mul, mul, eval_mul, eval_reversed_mul);
+binary_op!(Div, div, eval_div, eval_reversed_div);
+
+/*
 impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
 	type Output = Tensor<'a>;
 
@@ -44,7 +75,7 @@ impl<'a> std::ops::Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
 
 		Tensor {shape, id, name: String::from("product"), preds_list, eval_fn}
 	}
-}
+}*/
 
 //Common trait implementations
 impl<'a> std::cmp::PartialEq for &'a Tensor<'a> {
